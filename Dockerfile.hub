@@ -1,0 +1,12 @@
+# Dockerfile.hub — JupyterHub front-end for the multi-user "hub" variant.
+#
+# Spawns one exam-lab container per student via DockerSpawner; accounts and
+# per-user lab access come from hub/userlist (parsed by hub/jupyterhub_config.py,
+# both bind-mounted at runtime — edit them without rebuilding this image).
+FROM quay.io/jupyterhub/jupyterhub:5
+
+RUN pip install --no-cache-dir "dockerspawner>=13,<15" jupyterhub-idle-culler
+
+WORKDIR /srv/jupyterhub
+# config + userlist are bind-mounted by docker-compose at /srv/jupyterhub/hub
+CMD ["jupyterhub", "-f", "/srv/jupyterhub/hub/jupyterhub_config.py"]

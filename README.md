@@ -62,6 +62,57 @@ run side by side. Non-Python demo exams in `exams/` will still be seeded but
 their kernels are absent — point the volume at a course-specific folder
 (e.g. `./exams-bb1000:/home/jovyan/exams:ro`) for a real exam.
 
+## Multi-user variant — JupyterHub with exam accounts
+
+For real exams with many students, the `hub` variant puts **JupyterHub** in
+front of the labs: students log in with a **username and password**, and the
+hub spawns **one lab container per student** (DockerSpawner) with a private
+`results/<username>/` folder. No self-registration — the instructor provisions
+all accounts up front in one file, `hub/userlist`:
+
+```
+# username:password:lab[:admin]     lab = full | python | both
+alice:wonderland:full        # gets the polyglot lab
+bob:builder:python           # gets the Python-only lab
+carol:christmas:both         # picks one of the two at login
+teacher:changeme:both:admin  # + JupyterHub admin panel
+```
+
+```bash
+./run.sh build all           # the hub spawns from the lab images
+./run.sh build hub
+./run.sh start hub           # creates hub/userlist from the example if missing
+# open http://localhost:8000 — log in as any listed user
+./run.sh stop hub            # stops the hub AND all student containers
+```
+
+How it fits together:
+
+- `Dockerfile.hub` — JupyterHub 5 + DockerSpawner; config and userlist are
+  bind-mounted, so **account edits need no rebuild** and apply on the next
+  login (no hub restart either).
+- `hub/jupyterhub_config.py` — parses `userlist`, authenticates against it,
+  and maps each user's `lab` field to the image DockerSpawner starts.
+  `both` shows a lab picker; `admin` unlocks the hub admin panel
+  (see/stop every student's server).
+- Student containers get the same hardening as the standalone labs
+  (rootless `1000:100`, all capabilities dropped, `no-new-privileges`),
+  plus `2G` RAM / 2 CPU limits (`USER_MEM_LIMIT` / `USER_CPU_LIMIT` env).
+- Containers idle for longer than `IDLE_TIMEOUT` seconds (default 3600, set
+  in `.env`) are stopped and removed automatically (jupyterhub-idle-culler).
+  Work in `results/<username>/` is kept; the next login spawns afresh.
+- `exams/` is mounted read-only into every student container; the seed hook
+  copies working files into each student's own `results/<username>/`.
+  `./run.sh collect` archives all of them at once.
+- `hub/userlist` is **gitignored** (it holds passwords); commit only
+  `hub/userlist.example`. Passwords are plaintext — treat them as short-lived
+  exam credentials, generate fresh ones per exam sitting
+  (e.g. `openssl rand -hex 4` per student).
+- The hub needs the **docker socket** (it starts/stops containers) — that is
+  host-root-equivalent, so keep the hub config under instructor control.
+- Standalone token labs (ports 8888/8889) and the hub can run side by side;
+  budget ~2 GB RAM per active student (see Hardware requirements).
+
 ## Hardware requirements
 
 Numbers measured on the built image (10.6 GB, all kernels exercised):
@@ -91,22 +142,25 @@ docker compose up -d
 Or use the run script / make targets:
 
 ```bash
-./run.sh build|start|stop|restart|logs|shell|kernels [full|python]
+./run.sh build|start|stop|restart|logs|shell|kernels [full|python|all|hub]
 ./run.sh status|collect
-./run.sh clean [full|python]  # remove that variant's container + image
-./run.sh purge   # BOTH variants + base images + docker build cache
+./run.sh clean [full|python|all]  # remove that variant's container(s) + image(s)
+./run.sh purge   # ALL variants + hub + base images + docker build cache
 ./run.sh reset-results   # wipe results/ before a new exam (asks first)
 ```
 
 Commands that target one lab take an optional variant (`full` = polyglot on
-port 8888, `python` = Python-only on port 8889). Without one, an interactive
-menu asks (default `full`); non-interactive runs fall back to `full`, or set
+port 8888, `python` = Python-only on port 8889, `all` = both labs, `hub` =
+multi-user JupyterHub on port 8000). Without one, an interactive menu asks
+(default `full`); non-interactive runs fall back to `full`, or set
 `VARIANT=python` in the environment.
 
-Set a real token for an actual exam:
+Defaults for the login token and container names live in **`.env`**
+(`JUPYTER_TOKEN`, `CONTAINER_NAME*`). Set a real token for an actual exam —
+either edit `.env` or override per run:
 
 ```bash
-JUPYTER_TOKEN=$(openssl rand -hex 16) docker compose up -d
+JUPYTER_TOKEN=$(openssl rand -hex 16) ./run.sh start
 ```
 
 ## Directory layout
@@ -115,8 +169,14 @@ JUPYTER_TOKEN=$(openssl rand -hex 16) docker compose up -d
 examContainer/
 ├── Dockerfile                  image definition (all kernels + teaching stack)
 ├── Dockerfile.python           minimal Python-only image (see above)
+├── Dockerfile.hub              JupyterHub front-end for the multi-user variant
 ├── docker-compose.yml          services, ports, volumes
+├── .env                        params: JUPYTER_TOKEN, container names
 ├── run.sh                      start/stop/clean helper (see Quick start)
+├── hub/
+│   ├── jupyterhub_config.py    hub config: auth from userlist, DockerSpawner
+│   ├── userlist.example        account template (username:password:lab[:admin])
+│   └── userlist                real exam accounts (gitignored)
 ├── exams/                      → mounted read-only at /home/jovyan/exams
 │   ├── INSTRUCTIONS.md         student-facing instructions
 │   ├── 00-hello/               hello-world notebook per language (warm-up)

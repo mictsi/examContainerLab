@@ -25,6 +25,10 @@ services:
     environment:
       # Login token students enter in the browser
       JUPYTER_TOKEN: ${JUPYTER_TOKEN:-exam-demo}
+      # Open the file browser in the writable results/ folder, not in $HOME —
+      # keeps students out of the read-only exams/ mount by default.
+      # (LabApp, not ServerApp: jupyter-lab overrides the latter with '/lab')
+      NOTEBOOK_ARGS: --LabApp.default_url=/lab/tree/results
     volumes:
       # Exam sheets + instructions: read-only, students cannot modify them
       - ./exams:/home/jovyan/exams:ro
@@ -52,6 +56,7 @@ services:
       - ALL
     environment:
       JUPYTER_TOKEN: ${JUPYTER_TOKEN:-exam-demo}
+      NOTEBOOK_ARGS: --LabApp.default_url=/lab/tree/results
     volumes:
       - ./exams:/home/jovyan/exams:ro
       - ./results:/home/jovyan/results
@@ -63,3 +68,44 @@ services:
     # For "no internet during the exam", block egress on the host firewall or
     # run behind a filtering proxy; an `internal: true` docker network would
     # also break the published port 8888. See README.md.
+
+  # --- Multi-user JupyterHub front-end (variant "hub") ------------------------
+  # Start:  ./run.sh start hub    (or: docker compose --profile hub up -d)
+  # Open:   http://localhost:8000 — accounts and per-user lab access come from
+  # hub/userlist (username:password:lab[:admin]); no self-registration.
+  # The hub spawns one lab container per student, so the lab images must be
+  # built first (./run.sh build all) and the docker socket is mounted.
+  hub:
+    profiles: ["hub"]
+    build:
+      context: .
+      dockerfile: Dockerfile.hub
+    image: exam-jupyterhub:demo
+    container_name: ${CONTAINER_NAME_HUB:-examhub}
+    ports:
+      - "8000:8000"
+    environment:
+      # host path of this repo — bind-mount source for spawned containers
+      EXAM_HOST_DIR: ${EXAM_HOST_DIR:-${PWD}}
+      HUB_CONNECT_IP: ${CONTAINER_NAME_HUB:-examhub}
+      DOCKER_NETWORK: examnet
+      FULL_IMAGE: exam-jupyterlab:demo
+      PYTHON_IMAGE: exam-jupyterlab-python:demo
+      # stop + remove student containers after this many idle seconds
+      IDLE_TIMEOUT: ${IDLE_TIMEOUT:-3600}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # hub starts/stops student containers
+      - ./hub:/srv/jupyterhub/hub:ro               # jupyterhub_config.py + userlist
+      - ./results:/srv/jupyterhub/results          # pre-create per-user dirs (uid 1000)
+      - hub-state:/srv/jupyterhub/state            # hub DB + cookie secret
+    networks: [examnet]
+    restart: unless-stopped
+
+networks:
+  # shared by the hub and the student containers it spawns
+  # (fixed name so DockerSpawner finds it without the compose project prefix)
+  examnet:
+    name: examnet
+
+volumes:
+  hub-state:

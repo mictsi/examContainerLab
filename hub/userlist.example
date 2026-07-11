@@ -1,0 +1,19 @@
+# hub/userlist — exam accounts for the JupyterHub front-end (variant "hub").
+#
+# One account per line:    username:password:lab[:admin]
+#
+#   lab    full    → polyglot lab image (Python, R, Julia, C, C++, Java, …)
+#          python  → Python-only lab image
+#          both    → student picks one of the two at login
+#   admin  → JupyterHub admin panel (see/stop all user servers)
+#
+# No self-registration: only accounts in this file can log in. Edits apply on
+# the next login — no hub restart needed. Keep usernames to letters, digits,
+# - and _ (they become container names and results/ folder names).
+#
+# ./run.sh start hub  copies this example to hub/userlist if it is missing.
+# hub/userlist is gitignored — real passwords never land in git.
+alice:wonderland:full
+bob:builder:python
+carol:christmas:both
+teacher:changeme:both:admin
