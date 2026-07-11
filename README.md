@@ -37,6 +37,31 @@ Not included: `jupyter-contrib-nbextensions` (classic-notebook only, incompatibl
 with JupyterLab 4). For multi-student deployments, put this image behind
 **JupyterHub** (DockerSpawner) — one container per student.
 
+## Python-only variant (e.g. KTH BB1000)
+
+For courses that only need Python — such as
+[BB1000 Programming in Python](https://www.kth.se/student/kurser/kurs/BB1000?l=en) —
+`Dockerfile.python` builds a much smaller image (scipy-notebook base, ~4 GB
+vs 10.6 GB) with just the Python 3 kernel:
+
+- **Course libraries** (from the base image): numpy, scipy, pandas,
+  matplotlib, seaborn, sympy, scikit-learn, ipywidgets, ipympl
+- **pytest** — program testing / test-driven development
+- **git + jupyterlab-git** — version control from the CLI and the Lab UI
+- **nbgrader, nbdime, jupytext** — same teaching stack as the full image
+
+```bash
+docker compose --profile python build
+docker compose --profile python up -d
+# open http://localhost:8889/lab   — token: exam-demo
+```
+
+It uses the same `exams/` (read-only) and `results/` (writable) volumes and
+the same seed hook as the full lab, and runs on port **8889** so both labs can
+run side by side. Non-Python demo exams in `exams/` will still be seeded but
+their kernels are absent — point the volume at a course-specific folder
+(e.g. `./exams-bb1000:/home/jovyan/exams:ro`) for a real exam.
+
 ## Hardware requirements
 
 Numbers measured on the built image (10.6 GB, all kernels exercised):
@@ -66,11 +91,17 @@ docker compose up -d
 Or use the run script / make targets:
 
 ```bash
-./run.sh build|start|stop|restart|status|logs|shell|kernels|collect
-./run.sh clean   # remove container + exam image (results/ untouched)
-./run.sh purge   # clean + base image + docker build cache
+./run.sh build|start|stop|restart|logs|shell|kernels [full|python]
+./run.sh status|collect
+./run.sh clean [full|python]  # remove that variant's container + image
+./run.sh purge   # BOTH variants + base images + docker build cache
 ./run.sh reset-results   # wipe results/ before a new exam (asks first)
 ```
+
+Commands that target one lab take an optional variant (`full` = polyglot on
+port 8888, `python` = Python-only on port 8889). Without one, an interactive
+menu asks (default `full`); non-interactive runs fall back to `full`, or set
+`VARIANT=python` in the environment.
 
 Set a real token for an actual exam:
 
@@ -83,7 +114,8 @@ JUPYTER_TOKEN=$(openssl rand -hex 16) docker compose up -d
 ```
 examContainer/
 ├── Dockerfile                  image definition (all kernels + teaching stack)
-├── docker-compose.yml          service, ports, volumes
+├── Dockerfile.python           minimal Python-only image (see above)
+├── docker-compose.yml          services, ports, volumes
 ├── run.sh                      start/stop/clean helper (see Quick start)
 ├── exams/                      → mounted read-only at /home/jovyan/exams
 │   ├── INSTRUCTIONS.md         student-facing instructions

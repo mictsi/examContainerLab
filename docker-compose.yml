@@ -3,6 +3,9 @@
 # Start:   docker compose up -d          then open http://localhost:8888/lab
 # Token:   "exam-demo" (override:  JUPYTER_TOKEN=secret docker compose up -d)
 # Stop:    docker compose down
+#
+# Python-only variant (service examlab-python, port 8889):
+#   docker compose --profile python up -d
 services:
   examlab:
     build: .
@@ -25,6 +28,31 @@ services:
       # Exam sheets + instructions: read-only, students cannot modify them
       - ./exams:/home/jovyan/exams:ro
       # Student working copies / submissions: writable, survives the container
+      - ./results:/home/jovyan/results
+    restart: unless-stopped
+
+  # --- Minimal Python-only lab (e.g. KTH BB1000) -----------------------------
+  # Start:  docker compose --profile python up -d
+  # Open:   http://localhost:8889/lab  (port 8889 so it can run next to the
+  # full lab). Same volumes, token and hardening as the full service.
+  examlab-python:
+    profiles: ["python"]
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    image: exam-jupyterlab-python:demo
+    container_name: examlab-python
+    ports:
+      - "8889:8888"
+    user: "1000:100"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-exam-demo}
+    volumes:
+      - ./exams:/home/jovyan/exams:ro
       - ./results:/home/jovyan/results
     restart: unless-stopped
     # --- Hardening for real exams (uncomment / adjust) -----------------------

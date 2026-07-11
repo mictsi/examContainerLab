@@ -1,0 +1,39 @@
+# =============================================================================
+# Minimal Python-only exam / lab image
+# (sized for e.g. KTH BB1000 "Programming in Python")
+#
+# JupyterLab with the Python 3 kernel only. The scipy-notebook base already
+# ships the libraries the course lists: numpy, scipy, pandas, matplotlib,
+# seaborn, sympy, scikit-learn, ipywidgets, ipympl — plus git for the
+# version-control part of the syllabus.
+#
+# Added on top:
+#   pytest         : program testing / test-driven development
+#   jupyterlab-git : git UI inside JupyterLab (git CLI comes with the base)
+#   nbgrader, nbdime, jupytext : same teaching stack as the full image
+#
+# Volumes (see docker-compose.yml, service examlab-python):
+#   /home/jovyan/exams    read-only  exam sheets + instructions
+#   /home/jovyan/results  writable   student working copies / submissions
+# =============================================================================
+ARG BASE_IMAGE=quay.io/jupyter/scipy-notebook:latest
+FROM ${BASE_IMAGE}
+
+LABEL org.opencontainers.image.title="exam-jupyterlab-python" \
+      org.opencontainers.image.description="Minimal Python-only JupyterLab image for programming exams"
+
+# Startup hook: seed writable working copies of the exam files into results/
+USER root
+COPY --chmod=755 scripts/before-notebook.d/ /usr/local/bin/before-notebook.d/
+USER ${NB_UID}
+WORKDIR /home/jovyan
+
+RUN mamba install -y -c conda-forge \
+        pytest \
+        jupyterlab-git \
+        jupytext \
+        nbdime \
+        nbgrader \
+    && mamba clean --all -f -y
+
+EXPOSE 8888
