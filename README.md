@@ -37,6 +37,24 @@ Not included: `jupyter-contrib-nbextensions` (classic-notebook only, incompatibl
 with JupyterLab 4). For multi-student deployments, put this image behind
 **JupyterHub** (DockerSpawner) — one container per student.
 
+## Hardware requirements
+
+Numbers measured on the built image (10.6 GB, all kernels exercised):
+
+| Resource | Minimum | Recommended | Notes |
+|----------|---------|-------------|-------|
+| Disk     | 15 GB free | 30 GB free | image is 10.6 GB; building needs headroom for the base-image download and build cache |
+| RAM      | 4 GB    | 8 GB        | idle lab ≈ 0.4 GB; each running kernel adds ~0.2–0.6 GB (.NET, Java and Julia are the heavy ones) |
+| CPU      | 2 cores | 4+ cores    | the C++ kernels (cling) JIT-compile per cell; more cores also speed up the first build |
+
+- **Single seat / demo**: any laptop with 8 GB RAM runs the lab comfortably.
+- **Multi-student** (JupyterHub, one container per seat): budget **2 GB RAM and
+  1–2 cores per student** — this matches the `mem_limit: 2g` / `cpus: 2`
+  suggestions in `docker-compose.yml`. The 10.6 GB image is shared and stored
+  once per host, regardless of how many containers run on it.
+- **First build**: ~5 min on a fast machine with good bandwidth, up to ~40 min
+  on slower hardware — the base-image download alone is several GB.
+
 ## Quick start
 
 ```bash
