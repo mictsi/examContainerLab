@@ -10,6 +10,14 @@ services:
     container_name: examlab
     ports:
       - "8888:8888"
+    # --- Rootless: the container never runs as root -------------------------
+    # jovyan (uid 1000, gid 100 "users") is forced from the first process on;
+    # the docker-stacks root-phase (NB_UID remapping, GRANT_SUDO) is unused.
+    user: "1000:100"
+    security_opt:
+      - no-new-privileges:true   # blocks setuid/sudo escalation inside
+    cap_drop:
+      - ALL                      # non-root Jupyter + kernels need no capabilities
     environment:
       # Login token students enter in the browser
       JUPYTER_TOKEN: ${JUPYTER_TOKEN:-exam-demo}

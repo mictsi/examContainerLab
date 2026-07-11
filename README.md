@@ -127,6 +127,12 @@ For structured autograding, author the exams with **nbgrader**
 
 ## Hardening for real exams
 
+- **Rootless container** (already on in `docker-compose.yml`): the container is
+  pinned to `user: "1000:100"` (jovyan), starts with **all Linux capabilities
+  dropped** and `no-new-privileges`, so nothing inside — student code included —
+  can escalate to root. Consequence: the docker-stacks root features
+  (`NB_UID` remapping, `GRANT_SUDO`) are unavailable, and `results/` on the
+  host must be writable by uid 1000 (see Troubleshooting).
 - **Token**: set a per-session `JUPYTER_TOKEN` (see above).
 - **Resources**: uncomment `mem_limit` / `cpus` in `docker-compose.yml`.
 - **No internet**: an `internal: true` Docker network also breaks the

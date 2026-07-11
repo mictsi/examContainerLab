@@ -27,6 +27,11 @@ jobs:
           sudo docker image prune -af
           df -h /
 
+      # The container user jovyan is uid 1000; checkout leaves results/ owned
+      # by the runner user (uid 1001), which crashes the seed hook on startup.
+      - name: Make results/ writable for the container user
+        run: sudo chown -R 1000:100 results
+
       - name: Build exam image
         run: docker compose build
 

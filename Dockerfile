@@ -61,10 +61,6 @@ RUN curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
     && ln -s /opt/dotnet/dotnet /usr/local/bin/dotnet \
     && rm /tmp/dotnet-install.sh
 
-# Startup hook: seed writable working copies of the exam files into results/
-COPY scripts/before-notebook.d/ /usr/local/bin/before-notebook.d/
-RUN chmod +x /usr/local/bin/before-notebook.d/*.sh
-
 USER ${NB_UID}
 WORKDIR /home/jovyan
 
@@ -126,6 +122,10 @@ RUN dotnet tool install -g Microsoft.dotnet-interactive \
 # -----------------------------------------------------------------------------
 USER root
 COPY --chmod=755 scripts/xcpp-cling /usr/local/bin/xcpp-cling
+
+# Startup hook: seed writable working copies of the exam files into results/
+# (kept late in the file so hook edits don't invalidate the big layers above)
+COPY --chmod=755 scripts/before-notebook.d/ /usr/local/bin/before-notebook.d/
 USER ${NB_UID}
 RUN sed -i 's|"/opt/conda/envs/cling/bin/*xcpp"|"/usr/local/bin/xcpp-cling"|' \
         ${CONDA_DIR}/share/jupyter/kernels/xcpp*/kernel.json

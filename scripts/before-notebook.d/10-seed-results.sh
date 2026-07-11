@@ -23,11 +23,16 @@ seed_results() {
         rel="${src#"${exams_dir}"/}"
         dest="${results_dir}/${rel}"
         if [ ! -e "${dest}" ]; then
-            mkdir -p "$(dirname "${dest}")"
-            cp "${src}" "${dest}"
-            echo "Seeded working copy: results/${rel}"
+            # Never let a failure escape: start.sh sources this under `set -e`,
+            # so an unguarded error here would take the whole lab down.
+            if mkdir -p "$(dirname "${dest}")" && cp "${src}" "${dest}"; then
+                echo "Seeded working copy: results/${rel}"
+            else
+                echo "WARN: could not seed results/${rel} — is results/ writable by uid $(id -u)? (host fix: chown -R 1000 results)" >&2
+            fi
         fi
     done
+    return 0
 }
 
 seed_results
