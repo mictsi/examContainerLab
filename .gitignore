@@ -3,3 +3,4 @@ results/*
 archives/*
 !archives/.gitkeep
 .ipynb_checkpoints/
+.serena/
