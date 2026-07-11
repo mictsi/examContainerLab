@@ -1,0 +1,28 @@
+# University exam lab — JupyterLab with Python, R, Julia, C, C++, Java, Perl, .NET 10
+#
+# Start:   docker compose up -d          then open http://localhost:8888/lab
+# Token:   "exam-demo" (override:  JUPYTER_TOKEN=secret docker compose up -d)
+# Stop:    docker compose down
+services:
+  examlab:
+    build: .
+    image: exam-jupyterlab:demo
+    container_name: examlab
+    ports:
+      - "8888:8888"
+    environment:
+      # Login token students enter in the browser
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-exam-demo}
+    volumes:
+      # Exam sheets + instructions: read-only, students cannot modify them
+      - ./exams:/home/jovyan/exams:ro
+      # Student working copies / submissions: writable, survives the container
+      - ./results:/home/jovyan/results
+    restart: unless-stopped
+    # --- Hardening for real exams (uncomment / adjust) -----------------------
+    # mem_limit: 2g          # cap RAM per container
+    # cpus: 2                # cap CPU
+    # read_only: false       # NB: image needs writable $HOME for kernels
+    # For "no internet during the exam", block egress on the host firewall or
+    # run behind a filtering proxy; an `internal: true` docker network would
+    # also break the published port 8888. See README.md.

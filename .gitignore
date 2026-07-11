@@ -1,0 +1,5 @@
+results/*
+!results/.gitkeep
+archives/*
+!archives/.gitkeep
+.ipynb_checkpoints/

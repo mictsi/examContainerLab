@@ -1,0 +1,5 @@
+{
+  "display_name": "Perl (IPerl)",
+  "language": "perl",
+  "argv": ["iperl", "kernel", "{connection_file}"]
+}

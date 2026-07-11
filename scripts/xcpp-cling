@@ -1,0 +1,11 @@
+#!/bin/bash
+# Launcher for the xeus-cling C++ kernels.
+#
+# cling (clang 9) resolves the C++ standard library headers via the first
+# `x86_64-conda-linux-gnu-c++` it finds on PATH. Without this wrapper that is
+# the base conda env's GCC 15 toolchain, whose libstdc++ headers are too new
+# for clang 9 — the kernel segfaults on startup with
+# "Possible C++ standard library mismatch". Putting the cling env first makes
+# cling use its own, ABI-compatible headers.
+export PATH="/opt/conda/envs/cling/bin:${PATH}"
+exec /opt/conda/envs/cling/bin/xcpp "$@"
