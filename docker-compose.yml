@@ -1,7 +1,8 @@
 # University exam lab — JupyterLab with Python, R, Julia, C, C++, Java, Perl, .NET 10
 #
 # Start:   docker compose up -d          then open http://localhost:8888/lab
-# Token:   "exam-demo" (override:  JUPYTER_TOKEN=secret docker compose up -d)
+# Token:   "exam-demo" — set in .env (or override: JUPYTER_TOKEN=secret docker compose up -d)
+# Params:  .env holds JUPYTER_TOKEN and the container names
 # Stop:    docker compose down
 #
 # Python-only variant (service examlab-python, port 8889):
@@ -10,7 +11,7 @@ services:
   examlab:
     build: .
     image: exam-jupyterlab:demo
-    container_name: examlab
+    container_name: ${CONTAINER_NAME:-examlab}
     ports:
       - "8888:8888"
     # --- Rootless: the container never runs as root -------------------------
@@ -41,7 +42,7 @@ services:
       context: .
       dockerfile: Dockerfile.python
     image: exam-jupyterlab-python:demo
-    container_name: examlab-python
+    container_name: ${CONTAINER_NAME_PYTHON:-examlab-python}
     ports:
       - "8889:8888"
     user: "1000:100"
